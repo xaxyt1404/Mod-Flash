@@ -1,45 +1,62 @@
 plugins {
-	id 'net.fabricmc.fabric-loom' version '1.19-SNAPSHOT'
-	id 'maven-publish'
+    // MC 26.x NO está ofuscado: se usa el plugin sin "remap"
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+    id 'maven-publish'
 }
 
 version = project.mod_version
 group = project.maven_group
 
 base {
-	archivesName = project.archives_base_name
+    archivesName = project.archives_base_name
 }
 
 repositories {
-	mavenCentral()
-	maven {
-		name = 'Fabric'
-		url = 'https://fabricmc.net'
-	}
+    // Repos extra si los necesitas
 }
 
+loom {
+    // Separa clean main (común/servidor) de client (HUD, teclas, cámara, GUI)
+    splitEnvironmentSourceSets()
+
+    mods {
+        "flash" {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+    accessWidenerPath = file("src/main/resources/flash.accesswidener")
+
+}
+
+sourceSets {
+    client {
+        compileClasspath += main.compileClasspath
+        runtimeClasspath += main.runtimeClasspath
+    }
+}
+
+
 dependencies {
-	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    // Sin línea "mappings": 26.x usa nombres oficiales de Mojang sin remapear
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 }
 
 processResources {
-	def modVersion = project.version
-	inputs.property "version", modVersion
-
-	filesMatching("fabric.mod.json") {
-		expand "version": modVersion
-	}
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand "version": inputs.properties.version
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {
-	it.options.release = 25
+    it.options.release = 25
 }
 
 java {
-	withSourcesJar()
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(25)
-	}
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
 }

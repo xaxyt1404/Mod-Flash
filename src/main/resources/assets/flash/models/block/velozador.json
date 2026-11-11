@@ -1,0 +1,33 @@
+{
+  "parent": "block/block",
+  "credit": "Made with Blockbench",
+  "texture_size": [32.0, 32.0],
+  "textures": {
+    "0": "flash:block/velozador_side2",
+    "1": "flash:block/velozador_side1",
+    "2": "flash:block/velozador_down",
+    "3": "flash:block/velozador_up",
+    "particle": "flash:block/velozador_side2"
+  },
+  "elements": [
+    {
+      "from": [0.0, 0.0, 0.0],
+      "to": [16.0, 16.0, 16.0],
+      "faces": {
+        "north": { "uv": [0.0, 0.0, 16.0, 16.0], "texture": "#1" },
+        "east": { "uv": [0.0, 0.0, 16.0, 16.0], "texture": "#0" },
+        "south": { "uv": [0.0, 0.0, 16.0, 16.0], "texture": "#1" },
+        "west": { "uv": [0.0, 0.0, 16.0, 16.0], "texture": "#0" },
+        "up": { "uv": [0.0, 0.0, 16.0, 16.0], "texture": "#3" },
+        "down": { "uv": [0.0, 0.0, 16.0, 16.0], "texture": "#2" }
+      }
+    }
+  ],
+  "display": {
+    "gui": {
+      "rotation": [30.0, 45.0, 0.0],
+      "translation": [0.0, 0.0, 0.0],
+      "scale": [0.6, 0.6, 0.6]
+    }
+  }
+}
