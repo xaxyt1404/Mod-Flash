@@ -7,9 +7,12 @@ import net.minecraft.client.Minecraft;
 
 import java.util.UUID;
 
-/** Último estado recibido del servidor para el jugador local. */
+/**
+ * Último estado recibido del servidor para el jugador local.
+ */
 public final class ClientState {
-    private ClientState() {}
+    private ClientState() {
+    }
 
     public static boolean unlocked, superSpeed, fatigued, vibration, flashtime, terrain, locked, cinematic, breach;
     public static double energy, dim;
@@ -35,13 +38,10 @@ public final class ClientState {
 
         if (mc.player == null) return;
 
-        // En un mundo de un jugador el servidor integrado ya gestiona estos sets (mismo JVM).
-        if (mc.getSingleplayerServer() == null) {
-            UUID id = mc.player.getUUID();
-            PlayerFlags.set(PlayerFlags.PHASING, id, vibration);
-            PlayerFlags.set(PlayerFlags.TERRAIN, id, terrain);
-            PlayerFlags.set(PlayerFlags.LOCKED, id, locked);
-        }
+        UUID id = mc.player.getUUID();
+        PlayerFlags.set(PlayerFlags.PHASING, id, vibration);
+        PlayerFlags.set(PlayerFlags.TERRAIN, id, terrain);
+        PlayerFlags.set(PlayerFlags.LOCKED, id, locked);
 
         // Cámara cinemática del Tornado: tercera persona mientras dura el giro
         if (cinematic && !wasCinematic) {

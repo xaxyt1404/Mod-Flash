@@ -19,9 +19,12 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.Optional;
 
-/** Barra secundaria de Ruptura Dimensional, brecha de 5 s y teletransporte a bloque sólido seguro. */
+/**
+ * Barra secundaria de Ruptura Dimensional, brecha de 5 s y teletransporte a bloque sólido seguro.
+ */
 public final class DimensionRift {
-    private DimensionRift() {}
+    private DimensionRift() {
+    }
 
     public static void tick(ServerPlayer p, PlayerRuntime r, int level) {
         ServerLevel lv = (ServerLevel) p.level();
@@ -38,8 +41,15 @@ public final class DimensionRift {
 
         if (eligible) {
             if (r.dimAxis < 0 && r.dimBar <= 0) {            // ancla una nueva fila recta
-                if (Math.abs(mv.x) >= Math.abs(mv.z)) { r.dimAxis = 0; r.dimRow = bz; r.dimDir = mv.x >= 0 ? 1 : -1; }
-                else { r.dimAxis = 1; r.dimRow = bx; r.dimDir = mv.z >= 0 ? 1 : -1; }
+                if (Math.abs(mv.x) >= Math.abs(mv.z)) {
+                    r.dimAxis = 0;
+                    r.dimRow = bz;
+                    r.dimDir = mv.x >= 0 ? 1 : -1;
+                } else {
+                    r.dimAxis = 1;
+                    r.dimRow = bx;
+                    r.dimDir = mv.z >= 0 ? 1 : -1;
+                }
                 r.dimY = by;
             }
             if (r.dimAxis >= 0) {
@@ -75,7 +85,10 @@ public final class DimensionRift {
     }
 
     private static void tickBreach(ServerPlayer p, PlayerRuntime r, ServerLevel lv) {
-        if (r.breachCenter == null) { closeBreach(r); return; }
+        if (r.breachCenter == null) {
+            closeBreach(r);
+            return;
+        }
         Vec3 c = r.breachCenter;
 
         // Elipse vertical de partículas perpendicular a la dirección de carrera
@@ -119,7 +132,12 @@ public final class DimensionRift {
     // ------------------------------------------------------------------ elección
     public static void choose(ServerPlayer p, PlayerRuntime r, int index) {
         if (!r.menuOpen) return;
-        if (index < 0) { r.menuOpen = false; return; }        // canceló: la brecha sigue hasta agotar su tiempo
+
+        // Si canceló (index < 0), cerramos la brecha inmediatamente para evitar el bucle de menú
+        if (index < 0) {
+            closeBreach(r);
+            return;
+        }
 
         ResourceKey<Level> targetKey = switch (index) {
             case 0 -> Level.OVERWORLD;
@@ -138,8 +156,13 @@ public final class DimensionRift {
         }
 
         double x = p.getX(), z = p.getZ();
-        if (from.dimension() == Level.OVERWORLD && targetKey == Level.NETHER) { x /= 8.0; z /= 8.0; }
-        else if (from.dimension() == Level.NETHER && targetKey == Level.OVERWORLD) { x *= 8.0; z *= 8.0; }
+        if (from.dimension() == Level.OVERWORLD && targetKey == Level.NETHER) {
+            x /= 8.0;
+            z /= 8.0;
+        } else if (from.dimension() == Level.NETHER && targetKey == Level.OVERWORLD) {
+            x *= 8.0;
+            z *= 8.0;
+        }
         BlockPos clamped = to.getWorldBorder().clampToBounds(x, 64, z);
 
         Vec3 dest;
@@ -187,7 +210,9 @@ public final class DimensionRift {
         return Optional.empty();
     }
 
-    /** Suelo sólido, sin líquido ni fuego, y 2 bloques libres encima. */
+    /**
+     * Suelo sólido, sin líquido ni fuego, y 2 bloques libres encima.
+     */
     private static boolean isSafeStand(ServerLevel lv, BlockPos feet) {
         BlockPos floor = feet.below();
         BlockState fs = lv.getBlockState(floor);
@@ -201,13 +226,17 @@ public final class DimensionRift {
         return s.getCollisionShape(lv, pos).isEmpty() && s.getFluidState().isEmpty() && !s.is(BlockTags.FIRE);
     }
 
-    /** Plataforma de obsidiana 5x5 como la del portal vanilla (100, 49, 0). */
+    /**
+     * Plataforma de obsidiana 5x5 como la del portal vanilla (100, 49, 0).
+     */
     private static Vec3 buildEndPlatform(ServerLevel end) {
         BlockPos center = new BlockPos(100, 49, 0);
-        for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) {
-            end.setBlockAndUpdate(center.offset(dx, -1, dz), Blocks.OBSIDIAN.defaultBlockState());
-            for (int dy = 0; dy <= 2; dy++) end.setBlockAndUpdate(center.offset(dx, dy, dz), Blocks.AIR.defaultBlockState());
-        }
+        for (int dx = -2; dx <= 2; dx++)
+            for (int dz = -2; dz <= 2; dz++) {
+                end.setBlockAndUpdate(center.offset(dx, -1, dz), Blocks.OBSIDIAN.defaultBlockState());
+                for (int dy = 0; dy <= 2; dy++)
+                    end.setBlockAndUpdate(center.offset(dx, dy, dz), Blocks.AIR.defaultBlockState());
+            }
         return Vec3.atBottomCenterOf(center);
     }
 }

@@ -12,12 +12,18 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** Corre en cliente Y servidor (el cliente simula su propio movimiento; el servidor lo valida). */
+/**
+ * Corre en cliente Y servidor (el cliente simula su propio movimiento; el servidor lo valida).
+ */
 @Mixin(Entity.class)
 public abstract class EntityMixin {
-    @Shadow private Vec3 collide(Vec3 movement) { throw new AssertionError(); }
+    @Shadow
+    private Vec3 collide(Vec3 movement) {
+        throw new AssertionError();
+    }
 
-    @Unique private static final ThreadLocal<Boolean> FLASH$REENTRY = ThreadLocal.withInitial(() -> false);
+    @Unique
+    private static final ThreadLocal<Boolean> FLASH$REENTRY = ThreadLocal.withInitial(() -> false);
 
     /**
      * Vibración: ignora la colisión horizontal (X/Z) pero conserva la colisión vertical (Y),
@@ -36,7 +42,9 @@ public abstract class EntityMixin {
         }
     }
 
-    /** Tornado: la víctima (y el caster en cinemática) no pueden moverse por sí mismos. */
+    /**
+     * Tornado: la víctima (y el caster en cinemática) no pueden moverse por sí mismos.
+     */
     @Inject(method = "move", at = @At("HEAD"), cancellable = true)
     private void flash$lockMove(MoverType type, Vec3 movement, CallbackInfo ci) {
         if ((type == MoverType.SELF || type == MoverType.PLAYER) && PlayerFlags.isLocked((Entity) (Object) this)) {
@@ -44,7 +52,9 @@ public abstract class EntityMixin {
         }
     }
 
-    /** Tornado: cámara bloqueada. */
+    /**
+     * Tornado: cámara bloqueada.
+     */
     @Inject(method = "turn", at = @At("HEAD"), cancellable = true)
     private void flash$lockTurn(double yRot, double xRot, CallbackInfo ci) {
         if (PlayerFlags.isLocked((Entity) (Object) this)) ci.cancel();

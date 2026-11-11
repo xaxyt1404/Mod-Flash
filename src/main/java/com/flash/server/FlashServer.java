@@ -11,6 +11,9 @@ import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -20,19 +23,33 @@ import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.WrittenBookContent;
 import net.minecraft.world.phys.Vec3;
 
-/** Orquestador del lado servidor: tick, eventos de daño, recepción de payloads y sincronización. */
-public final class FlashServer {
-    private FlashServer() {}
+import java.util.List;
 
-    /** true mientras el mod aplica daño propio (evita recursión del Golpe de Masa). */
+/**
+ * Orquestador del lado servidor: tick, eventos de daño, recepción de payloads y sincronización.
+ */
+public final class FlashServer {
+    private FlashServer() {
+    }
+
+    /**
+     * true mientras el mod aplica daño propio (evita recursión del Golpe de Masa).
+     */
     private static boolean internalDamage;
 
     public static void guarded(Runnable r) {
         boolean prev = internalDamage;
         internalDamage = true;
-        try { r.run(); } finally { internalDamage = prev; }
+        try {
+            r.run();
+        } finally {
+            internalDamage = prev;
+        }
     }
 
     public static void init() {
@@ -41,12 +58,95 @@ public final class FlashServer {
         ServerLivingEntityEvents.AFTER_DAMAGE.register(FlashServer::afterDamage);
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
                 PlayerRuntime.discard(handler.getPlayer().getUUID()));
+
+        // Entregar el libro de guía por primera vez al unirse
+        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+            ServerPlayer p = handler.getPlayer();
+            FlashData d = p.getAttachedOrCreate(FlashAttachments.FLASH_DATA);
+            if (!d.hasReceivedGuide()) {
+                p.getInventory().add(createGuideBook());
+                p.setAttached(FlashAttachments.FLASH_DATA, d.withReceivedGuide(true));
+            }
+        });
     }
+
+    /**
+     * Crea un libro nativo escrito con la guía in-game.
+     */
+    public static ItemStack createGuideBook() {
+        ItemStack book = new ItemStack(Items.WRITTEN_BOOK);
+
+        List<Component> pages = List.of(
+                Component.empty()
+                        .append(Component.literal("GUÍA SPEED FORCE\n\n").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.RED).withBold(false)))
+                        .append(Component.literal("1. El Velozador\n").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.DARK_RED).withBold(false)))
+                        .append(Component.literal("Para obtener los poderes craftea el bloque principal:\n\n").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.BLACK).withBold(false)))
+                        .append(Component.literal("- Fila 1:").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.DARK_GRAY).withBold(false)))
+                        .append(Component.literal(" Blaze, Cobre, Blaze\n").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.BLACK).withBold(false)))
+                        .append(Component.literal("- Fila 2:").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.DARK_GRAY).withBold(false)))
+                        .append(Component.literal(" Glowstone, Redstone, Glowstone\n").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.BLACK).withBold(false)))
+                        .append(Component.literal("- Fila 3:").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.DARK_GRAY).withBold(false)))
+                        .append(Component.literal(" Oro, Cobre, Oro").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.BLACK).withBold(false))),
+
+                Component.empty()
+                        .append(Component.literal("2. El Ritual\n").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.DARK_RED).withBold(false)))
+                        .append(Component.literal("1. Coloca El Velozador a ").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.BLACK).withBold(false)))
+                        .append(Component.literal("2 bloques").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.DARK_RED).withBold(false)))
+                        .append(Component.literal(" de altura (Overworld).\n\n2. Pon un ").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.BLACK).withBold(false)))
+                        .append(Component.literal("Pararrayos").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.DARK_RED).withBold(false)))
+                        .append(Component.literal(" encima del bloque.\n\n3. Párate ").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.BLACK).withBold(false)))
+                        .append(Component.literal("DEBAJO").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.DARK_RED).withBold(false)))
+                        .append(Component.literal(" del bloque. Caerá un rayo que activará tu conexión.").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.BLACK).withBold(false))),
+
+                Component.empty()
+                        .append(Component.literal("3. Controles\n\n").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.DARK_RED).withBold(false)))
+                        .append(Component.literal("[R]").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.RED).withBold(false)))
+                        .append(Component.literal(" Activar Supervelocidad.\n").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.BLACK).withBold(false)))
+                        .append(Component.literal("[Alt+Rueda]").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.RED).withBold(false)))
+                        .append(Component.literal(" Nivel (1 al 5).\n\n").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.BLACK).withBold(false)))
+                        .append(Component.literal("Barra Speed Force:\n").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.DARK_RED).withBold(false)))
+                        .append(Component.literal("Regenera +5/s en reposo. Al llegar a 0 entras en ").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.BLACK).withBold(false)))
+                        .append(Component.literal("Fatiga").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.RED).withBold(false)))
+                        .append(Component.literal(" por 3 seg.").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.BLACK).withBold(false))),
+
+                Component.empty()
+                        .append(Component.literal("4. Habilidades\n\n").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.DARK_RED).withBold(false)))
+                        .append(Component.literal("[V] Vibración:").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.DARK_BLUE).withBold(false)))
+                        .append(Component.literal(" Intangibilidad.\n").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.BLACK).withBold(false)))
+                        .append(Component.literal("[C] Flashtime:").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.GOLD).withBold(false)))
+                        .append(Component.literal(" Ralentizar área.\n").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.BLACK).withBold(false)))
+                        .append(Component.literal("[G] Rayo:").withStyle(s -> s.withColor(ChatFormatting.GOLD).withBold(false)))
+                        .append(Component.literal(" Disparo eléctrico.\n").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.BLACK).withBold(false)))
+                        .append(Component.literal("[B] Tornado:").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.DARK_PURPLE).withBold(false)))
+                        .append(Component.literal(" Levantar objetivo.").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.BLACK).withBold(false))),
+
+                Component.empty()
+                        .append(Component.literal("5. Brecha Dimensional\n").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.DARK_RED).withBold(false)))
+                        .append(Component.literal("Corre a ").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.BLACK).withBold(false)))
+                        .append(Component.literal("Nivel 5").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.DARK_RED).withBold(false)))
+                        .append(Component.literal(" en línea recta durante 10 s para cargar la barra secundaria al 100%.\n\nSe abrirá el portal para viajar a un lugar seguro en Overworld, Nether o End.").withStyle(s -> s.withColor(net.minecraft.ChatFormatting.BLACK).withBold(false)))
+        );
+
+        WrittenBookContent content = new WrittenBookContent(
+                net.minecraft.server.network.Filterable.passThrough("Guía de la Speed Force"),
+                "YesidP",
+                0,
+                pages.stream().map(net.minecraft.server.network.Filterable::passThrough).toList(),
+                true
+        );
+
+        book.set(DataComponents.WRITTEN_BOOK_CONTENT, content);
+        return book;
+    }
+
 
     // ===================================================================== tick
     private static void tick(MinecraftServer server) {
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-            if (!p.isAlive()) { PlayerRuntime.discard(p.getUUID()); continue; }
+            if (!p.isAlive()) {
+                PlayerRuntime.discard(p.getUUID());
+                continue;
+            }
 
             FlashData d = p.getAttachedOrCreate(FlashAttachments.FLASH_DATA);
             PlayerRuntime r = PlayerRuntime.get(p);
@@ -67,8 +167,6 @@ public final class FlashServer {
             // Flags para los mixins (colisión, agua/lava, bloqueo)
             PlayerFlags.set(PlayerFlags.PHASING, p.getUUID(), r.vibration);
             PlayerFlags.set(PlayerFlags.TERRAIN, p.getUUID(), r.terrain);
-            // Truco de validación: el servidor no hace rollback al atravesar bloques con noPhysics.
-            // Player.tick() lo resetea cada tick; aquí se re-activa DESPUÉS de los ticks y ANTES de los paquetes.
             if (r.vibration) p.noPhysics = true;
 
             sync(p, r, d);
@@ -109,7 +207,9 @@ public final class FlashServer {
         return true;
     }
 
-    /** Golpe de Masa + Robo de Velocidad. Se aplica DESPUÉS del golpe vanilla para que el daño sea aditivo. */
+    /**
+     * Golpe de Masa + Robo de Velocidad. Se aplica DESPUÉS del golpe vanilla para que el daño sea aditivo.
+     */
     private static void afterDamage(LivingEntity victim, DamageSource source, float base, float taken, boolean blocked) {
         if (internalDamage || blocked || taken <= 0) return;
         if (!(source.getEntity() instanceof ServerPlayer p) || source.getDirectEntity() != p) return; // solo melee
@@ -170,7 +270,8 @@ public final class FlashServer {
             case UseAbility.FLASHTIME -> Abilities.toggleFlashtime(p, r);
             case UseAbility.RAY -> Abilities.fireRay(p, r);
             case UseAbility.TORNADO -> Abilities.startTornado(p, r);
-            default -> { }
+            default -> {
+            }
         }
     }
 
